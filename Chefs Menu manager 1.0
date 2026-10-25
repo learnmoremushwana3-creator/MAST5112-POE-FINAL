@@ -1,0 +1,982 @@
+import React, { useState } from 'react';
+
+import {
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  FlatList,
+  StyleSheet,
+  Modal,
+  Alert,
+  SafeAreaView,
+  StatusBar,
+  ScrollView,
+} from 'react-native';
+
+// Course categories
+const COURSE_OPTIONS = ['Starter', 'Main Course', 'Dessert'];
+
+// Filter tabs
+const FILTER_OPTIONS = ['All', ...COURSE_OPTIONS];
+
+// Reusable input component
+function FormInput({
+  label,
+  value,
+  onChangeText,
+  placeholder,
+  keyboardType = 'default',
+  multiline = false,
+}) {
+  return (
+    <View style={styles.inputGroup}>
+      <Text style={styles.inputLabel}>{label}</Text>
+
+      <TextInput
+        style={[
+          styles.input,
+          multiline && styles.multilineInput,
+        ]}
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        placeholderTextColor="#999999"
+        keyboardType={keyboardType}
+        multiline={multiline}
+      />
+    </View>
+  );
+}
+
+// Reusable statistics card
+function StatisticCard({ title, value }) {
+  return (
+    <View style={styles.statCard}>
+      <Text style={styles.statValue}>{value}</Text>
+      <Text style={styles.statTitle}>{title}</Text>
+    </View>
+  );
+}
+
+// Reusable menu item card
+function MenuCard({ item, onEdit, onDelete }) {
+  return (
+    <View style={styles.menuCard}>
+      <View style={styles.menuCardContent}>
+        <View style={styles.menuItemHeading}>
+          <Text style={styles.dishName}>{item.name}</Text>
+
+          <Text style={styles.dishPrice}>
+            R {Number(item.price).toFixed(2)}
+          </Text>
+        </View>
+
+        <Text style={styles.courseBadge}>{item.option}</Text>
+
+        <Text style={styles.dishDescription}>
+          {item.description}
+        </Text>
+
+        <View style={styles.actionButtons}>
+          <TouchableOpacity
+            style={styles.editButton}
+            onPress={() => onEdit(item)}
+          >
+            <Text style={styles.buttonText}>Edit</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.deleteButton}
+            onPress={() => onDelete(item.id)}
+          >
+            <Text style={styles.buttonText}>Delete</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+export default function App() {
+  // Form state
+  const [dishName, setDishName] = useState('');
+  const [description, setDescription] = useState('');
+  const [priceInput, setPriceInput] = useState('');
+  const [selectedCourse, setSelectedCourse] = useState('');
+
+  // Menu state
+  const [menuItems, setMenuItems] = useState([]);
+
+  // Search and filter state
+  const [searchText, setSearchText] = useState('');
+  const [activeFilter, setActiveFilter] = useState('All');
+
+  // Editing state
+  const [editingId, setEditingId] = useState(null);
+
+  // Modal state
+  const [courseModalVisible, setCourseModalVisible] =
+    useState(false);
+
+  // Clear the form
+  const resetMenuForm = () => {
+    setDishName('');
+    setDescription('');
+    setPriceInput('');
+    setSelectedCourse('');
+    setEditingId(null);
+  };
+
+  // Validate form information
+  const validateMenuForm = () => {
+    if (
+      !dishName.trim() ||
+      !description.trim() ||
+      !priceInput.trim() ||
+      !selectedCourse
+    ) {
+      Alert.alert(
+        'Missing Information',
+        'Please complete all fields before saving.'
+      );
+
+      return false;
+    }
+
+    const numericPrice = Number(priceInput);
+
+    if (!Number.isFinite(numericPrice) || numericPrice < 0) {
+      Alert.alert(
+        'Invalid Price',
+        'Please enter a valid price of zero or more.'
+      );
+
+      return false;
+    }
+
+    return true;
+  };
+
+  // Add a new menu item or update an existing one
+  const handleSaveMenuItem = () => {
+    if (!validateMenuForm()) {
+      return;
+    }
+
+    const newMenuItem = {
+      id: editingId || Date.now().toString(),
+      name: dishName.trim(),
+      description: description.trim(),
+      price: Number(priceInput),
+      option: selectedCourse,
+    };
+
+    if (editingId) {
+      setMenuItems((previousItems) =>
+        previousItems.map((item) =>
+          item.id === editingId ? newMenuItem : item
+        )
+      );
+
+      Alert.alert('Success', 'Menu item updated successfully.');
+    } else {
+      setMenuItems((previousItems) => [
+        ...previousItems,
+        newMenuItem,
+      ]);
+
+      Alert.alert('Success', 'Menu item added successfully.');
+    }
+
+    resetMenuForm();
+  };
+
+  // Load a menu item into the form for editing
+  const handleEditMenuItem = (item) => {
+    setDishName(item.name);
+    setDescription(item.description);
+    setPriceInput(String(item.price));
+    setSelectedCourse(item.option);
+    setEditingId(item.id);
+  };
+
+  // Delete a menu item after confirmation
+  const handleDeleteMenuItem = (id) => {
+    Alert.alert(
+      'Delete Menu Item',
+      'Are you sure you want to delete this item?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            setMenuItems((previousItems) =>
+              previousItems.filter((item) => item.id !== id)
+            );
+
+            if (editingId === id) {
+              resetMenuForm();
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  // Search and filter menu items
+  const filteredMenuItems = menuItems.filter((item) => {
+    const matchesSearch = item.name
+      .toLowerCase()
+      .includes(searchText.trim().toLowerCase());
+
+    const matchesCourse =
+      activeFilter === 'All' ||
+      item.option === activeFilter;
+
+    return matchesSearch && matchesCourse;
+  });
+
+  // Calculate menu statistics
+  const totalItems = menuItems.length;
+
+  const totalPrice = menuItems.reduce(
+    (total, item) => total + Number(item.price),
+    0
+  );
+
+  const averagePrice =
+    totalItems > 0 ? totalPrice / totalItems : 0;
+
+  const starterCount = menuItems.filter(
+    (item) => item.option === 'Starter'
+  ).length;
+
+  const mainCourseCount = menuItems.filter(
+    (item) => item.option === 'Main Course'
+  ).length;
+
+  const dessertCount = menuItems.filter(
+    (item) => item.option === 'Dessert'
+  ).length;
+
+  // Main application screen
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar
+        barStyle="light-content"
+        backgroundColor="#252525"
+      />
+
+      <FlatList
+        style={styles.container}
+        data={filteredMenuItems}
+        keyExtractor={(item) => item.id}
+        keyboardShouldPersistTaps="handled"
+        contentContainerStyle={styles.listContent}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          <View>
+            {/* Header */}
+            <View style={styles.header}>
+              <Text style={styles.headerEmoji}>🍽️</Text>
+
+              <Text style={styles.headerTitle}>
+                Chef's Menu Manager
+              </Text>
+
+              <Text style={styles.headerSubtitle}>
+                Manage your delicious creations
+              </Text>
+            </View>
+
+            {/* Statistics */}
+            <Text style={styles.sectionTitle}>
+              Menu Overview
+            </Text>
+
+            <View style={styles.statsContainer}>
+              <StatisticCard
+                title="Total Items"
+                value={totalItems}
+              />
+
+              <StatisticCard
+                title="Average Price"
+                value={`R ${averagePrice.toFixed(2)}`}
+              />
+            </View>
+
+            {/* Course statistics */}
+            <View style={styles.courseStatsCard}>
+              <Text style={styles.courseStatsTitle}>
+                Items by Course
+              </Text>
+
+              <View style={styles.courseStatRow}>
+                <Text style={styles.courseStatLabel}>
+                  Starters
+                </Text>
+
+                <Text style={styles.courseStatValue}>
+                  {starterCount}
+                </Text>
+              </View>
+
+              <View style={styles.courseStatRow}>
+                <Text style={styles.courseStatLabel}>
+                  Main Courses
+                </Text>
+
+                <Text style={styles.courseStatValue}>
+                  {mainCourseCount}
+                </Text>
+              </View>
+
+              <View style={styles.courseStatRow}>
+                <Text style={styles.courseStatLabel}>
+                  Desserts
+                </Text>
+
+                <Text style={styles.courseStatValue}>
+                  {dessertCount}
+                </Text>
+              </View>
+            </View>
+
+            {/* Add or edit form */}
+            <Text style={styles.sectionTitle}>
+              {editingId ? 'Edit Menu Item' : 'Add Menu Item'}
+            </Text>
+
+            <View style={styles.formCard}>
+              <FormInput
+                label="Dish Name"
+                value={dishName}
+                onChangeText={setDishName}
+                placeholder="Enter dish name"
+              />
+
+              <FormInput
+                label="Description"
+                value={description}
+                onChangeText={setDescription}
+                placeholder="Describe the dish"
+                multiline
+              />
+
+              <FormInput
+                label="Price (R)"
+                value={priceInput}
+                onChangeText={setPriceInput}
+                placeholder="Enter price"
+                keyboardType="decimal-pad"
+              />
+
+              <Text style={styles.inputLabel}>
+                Course
+              </Text>
+
+              <TouchableOpacity
+                style={styles.courseSelector}
+                onPress={() => setCourseModalVisible(true)}
+              >
+                <Text
+                  style={[
+                    styles.courseSelectorText,
+                    !selectedCourse && styles.placeholderText,
+                  ]}
+                >
+                  {selectedCourse || 'Select a course'}
+                </Text>
+
+                <Text style={styles.dropdownArrow}>▼</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={styles.saveButton}
+                onPress={handleSaveMenuItem}
+              >
+                <Text style={styles.saveButtonText}>
+                  {editingId ? 'Update Menu Item' : 'Add Menu Item'}
+                </Text>
+              </TouchableOpacity>
+
+              {editingId && (
+                <TouchableOpacity
+                  style={styles.cancelButton}
+                  onPress={resetMenuForm}
+                >
+                  <Text style={styles.cancelButtonText}>
+                    Cancel Editing
+                  </Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Course selection modal */}
+            <Modal
+              visible={courseModalVisible}
+              transparent
+              animationType="slide"
+              onRequestClose={() =>
+                setCourseModalVisible(false)
+              }
+            >
+              <View style={styles.modalOverlay}>
+                <View style={styles.modalContent}>
+                  <Text style={styles.modalTitle}>
+                    Select Course
+                  </Text>
+
+                  {COURSE_OPTIONS.map((course) => (
+                    <TouchableOpacity
+                      key={course}
+                      style={styles.modalOption}
+                      onPress={() => {
+                        setSelectedCourse(course);
+                        setCourseModalVisible(false);
+                      }}
+                    >
+                      <Text style={styles.modalOptionText}>
+                        {course}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+
+                  <TouchableOpacity
+                    style={styles.modalCancelButton}
+                    onPress={() =>
+                      setCourseModalVisible(false)
+                    }
+                  >
+                    <Text style={styles.modalCancelText}>
+                      Cancel
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            </Modal>
+
+            {/* Search */}
+            <Text style={styles.sectionTitle}>
+              Find a Dish
+            </Text>
+
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Search menu by dish name..."
+              placeholderTextColor="#999999"
+              value={searchText}
+              onChangeText={setSearchText}
+              autoCapitalize="none"
+            />
+
+            {/* Scrollable course tabs */}
+            <Text style={styles.sectionTitle}>
+              Filter by Course
+            </Text>
+
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              nestedScrollEnabled
+              contentContainerStyle={styles.tabsContainer}
+            >
+              {FILTER_OPTIONS.map((course) => (
+                <TouchableOpacity
+                  key={course}
+                  style={[
+                    styles.tabButton,
+                    activeFilter === course &&
+                      styles.activeTabButton,
+                  ]}
+                  onPress={() => setActiveFilter(course)}
+                >
+                  <Text
+                    style={[
+                      styles.tabText,
+                      activeFilter === course &&
+                        styles.activeTabText,
+                    ]}
+                  >
+                    {course}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {/* Menu list heading */}
+            <View style={styles.menuListHeading}>
+              <Text style={styles.sectionTitle}>
+                Menu Items
+              </Text>
+
+              <Text style={styles.itemCount}>
+                {filteredMenuItems.length} found
+              </Text>
+            </View>
+          </View>
+        }
+        renderItem={({ item }) => (
+          <MenuCard
+            item={item}
+            onEdit={handleEditMenuItem}
+            onDelete={handleDeleteMenuItem}
+          />
+        )}
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyEmoji}>🍴</Text>
+
+            <Text style={styles.emptyTitle}>
+              No Menu Items Found
+            </Text>
+
+            <Text style={styles.emptyMessage}>
+              Add a dish or change your search or course filter.
+            </Text>
+          </View>
+        }
+        ListFooterComponent={
+          <Text style={styles.footerText}>
+            Showing {filteredMenuItems.length} of {totalItems}{' '}
+            menu items
+          </Text>
+        }
+      />
+    </SafeAreaView>
+  );
+}
+
+// Application styles
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: '#F8F5F0',
+  },
+
+  container: {
+    flex: 1,
+    backgroundColor: '#F8F5F0',
+  },
+
+  listContent: {
+    paddingBottom: 25,
+  },
+
+  header: {
+    backgroundColor: '#252525',
+    paddingVertical: 28,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+    borderBottomWidth: 4,
+    borderBottomColor: '#E87524',
+  },
+
+  headerEmoji: {
+    fontSize: 42,
+    marginBottom: 8,
+  },
+
+  headerTitle: {
+    color: '#FFFFFF',
+    fontSize: 25,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+
+  headerSubtitle: {
+    color: '#E0E0E0',
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+
+  sectionTitle: {
+    fontSize: 19,
+    fontWeight: 'bold',
+    color: '#292929',
+    marginTop: 22,
+    marginBottom: 12,
+    marginHorizontal: 16,
+  },
+
+  statsContainer: {
+    flexDirection: 'row',
+    paddingHorizontal: 11,
+  },
+
+  statCard: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 5,
+    paddingVertical: 18,
+    paddingHorizontal: 5,
+    borderRadius: 12,
+    alignItems: 'center',
+    elevation: 2,
+  },
+
+  statValue: {
+    color: '#E87524',
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+
+  statTitle: {
+    color: '#555555',
+    fontSize: 13,
+    marginTop: 7,
+    textAlign: 'center',
+  },
+
+  courseStatsCard: {
+    marginHorizontal: 16,
+    marginTop: 12,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    elevation: 2,
+  },
+
+  courseStatsTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#292929',
+    marginBottom: 12,
+  },
+
+  courseStatRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 7,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEEEEE',
+  },
+
+  courseStatLabel: {
+    color: '#555555',
+    fontSize: 14,
+  },
+
+  courseStatValue: {
+    color: '#E87524',
+    fontSize: 15,
+    fontWeight: 'bold',
+  },
+
+  formCard: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    padding: 16,
+    borderRadius: 14,
+    elevation: 3,
+  },
+
+  inputGroup: {
+    marginBottom: 14,
+  },
+
+  inputLabel: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333333',
+    marginBottom: 7,
+  },
+
+  input: {
+    backgroundColor: '#FAFAFA',
+    borderWidth: 1,
+    borderColor: '#DDDDDD',
+    borderRadius: 9,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
+    fontSize: 15,
+    color: '#292929',
+  },
+
+  multilineInput: {
+    minHeight: 75,
+    textAlignVertical: 'top',
+  },
+
+  courseSelector: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#FAFAFA',
+    borderWidth: 1,
+    borderColor: '#DDDDDD',
+    borderRadius: 9,
+    padding: 14,
+    marginBottom: 18,
+  },
+
+  courseSelectorText: {
+    color: '#292929',
+    fontSize: 15,
+  },
+
+  placeholderText: {
+    color: '#999999',
+  },
+
+  dropdownArrow: {
+    color: '#E87524',
+    fontSize: 13,
+  },
+
+  saveButton: {
+    backgroundColor: '#E87524',
+    paddingVertical: 14,
+    borderRadius: 9,
+    alignItems: 'center',
+    marginTop: 3,
+  },
+
+  saveButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+
+  cancelButton: {
+    backgroundColor: '#EEEEEE',
+    paddingVertical: 12,
+    borderRadius: 9,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+
+  cancelButtonText: {
+    color: '#333333',
+    fontSize: 15,
+    fontWeight: '600',
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+
+  modalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 15,
+    padding: 20,
+    width: '100%',
+    maxWidth: 400,
+  },
+
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#292929',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+
+  modalOption: {
+    backgroundColor: '#F8F5F0',
+    padding: 15,
+    borderRadius: 8,
+    marginBottom: 10,
+  },
+
+  modalOptionText: {
+    color: '#333333',
+    fontSize: 16,
+    textAlign: 'center',
+  },
+
+  modalCancelButton: {
+    padding: 12,
+    alignItems: 'center',
+  },
+
+  modalCancelText: {
+    color: '#D9534F',
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
+
+  searchInput: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#DDDDDD',
+    borderRadius: 10,
+    padding: 14,
+    marginHorizontal: 16,
+    fontSize: 15,
+    color: '#292929',
+  },
+
+  tabsContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 5,
+    alignItems: 'center',
+  },
+
+  tabButton: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 11,
+    paddingHorizontal: 20,
+    marginRight: 10,
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+  },
+
+  activeTabButton: {
+    backgroundColor: '#E87524',
+    borderColor: '#E87524',
+  },
+
+  tabText: {
+    color: '#333333',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+
+  activeTabText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+  },
+
+  menuListHeading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginRight: 16,
+  },
+
+  itemCount: {
+    color: '#777777',
+    fontSize: 13,
+    marginTop: 10,
+  },
+
+  menuCard: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginBottom: 14,
+    borderRadius: 13,
+    borderLeftWidth: 5,
+    borderLeftColor: '#E87524',
+    elevation: 2,
+  },
+
+  menuCardContent: {
+    padding: 16,
+  },
+
+  menuItemHeading: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 10,
+  },
+
+  dishName: {
+    color: '#292929',
+    fontSize: 18,
+    fontWeight: 'bold',
+    flex: 1,
+    marginRight: 8,
+  },
+
+  dishPrice: {
+    color: '#E87524',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+
+  courseBadge: {
+    color: '#39734D',
+    backgroundColor: '#E7F3E9',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    fontSize: 12,
+    fontWeight: 'bold',
+    overflow: 'hidden',
+    marginBottom: 10,
+  },
+
+  dishDescription: {
+    color: '#666666',
+    fontSize: 14,
+    lineHeight: 21,
+    marginBottom: 15,
+  },
+
+  actionButtons: {
+    flexDirection: 'row',
+  },
+
+  editButton: {
+    flex: 1,
+    backgroundColor: '#39734D',
+    padding: 11,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginRight: 6,
+  },
+
+  deleteButton: {
+    flex: 1,
+    backgroundColor: '#D9534F',
+    padding: 11,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginLeft: 6,
+  },
+
+  buttonText: {
+    color: '#FFFFFF',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+
+  emptyContainer: {
+    alignItems: 'center',
+    paddingHorizontal: 25,
+    paddingVertical: 35,
+  },
+
+  emptyEmoji: {
+    fontSize: 40,
+    marginBottom: 10,
+  },
+
+  emptyTitle: {
+    color: '#333333',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 8,
+  },
+
+  emptyMessage: {
+    color: '#777777',
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 21,
+  },
+
+  footerText: {
+    color: '#888888',
+    fontSize: 12,
+    textAlign: 'center',
+    paddingVertical: 20,
+  },
+});
+
