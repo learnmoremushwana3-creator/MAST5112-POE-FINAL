@@ -264,7 +264,6 @@ export default function App() {
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
           <View>
-            {/* Header */}
             <View style={styles.header}>
               <Text style={styles.headerEmoji}>🍽️</Text>
 
@@ -277,7 +276,6 @@ export default function App() {
               </Text>
             </View>
 
-            {/* Statistics */}
             <Text style={styles.sectionTitle}>
               Menu Overview
             </Text>
@@ -294,7 +292,6 @@ export default function App() {
               />
             </View>
 
-            {/* Course statistics */}
             <View style={styles.courseStatsCard}>
               <Text style={styles.courseStatsTitle}>
                 Items by Course
@@ -331,7 +328,6 @@ export default function App() {
               </View>
             </View>
 
-            {/* Add or edit form */}
             <Text style={styles.sectionTitle}>
               {editingId ? 'Edit Menu Item' : 'Add Menu Item'}
             </Text>
@@ -401,7 +397,6 @@ export default function App() {
               )}
             </View>
 
-            {/* Course selection modal */}
             <Modal
               visible={courseModalVisible}
               transparent
@@ -445,7 +440,6 @@ export default function App() {
               </View>
             </Modal>
 
-            {/* Search */}
             <Text style={styles.sectionTitle}>
               Find a Dish
             </Text>
@@ -459,7 +453,6 @@ export default function App() {
               autoCapitalize="none"
             />
 
-            {/* Scrollable course tabs */}
             <Text style={styles.sectionTitle}>
               Filter by Course
             </Text>
@@ -493,7 +486,6 @@ export default function App() {
               ))}
             </ScrollView>
 
-            {/* Menu list heading */}
             <View style={styles.menuListHeading}>
               <Text style={styles.sectionTitle}>
                 Menu Items
@@ -536,7 +528,6 @@ export default function App() {
   );
 }
 
-// Application styles
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
