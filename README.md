@@ -22,3 +22,4 @@ Added reusable components to reduce repeated code.
 Added SafeAreaView, StatusBar, and ScrollView.
 The application has been tested for the functionality of the added features.
 The application runs succesfully
+Repo link-https://snack.expo.dev/@moflava/chefs-menu-manager-1-0?platform=web
