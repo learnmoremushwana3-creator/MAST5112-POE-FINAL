@@ -14,13 +14,10 @@ import {
   ScrollView,
 } from 'react-native';
 
-// Course categories
 const COURSE_OPTIONS = ['Starter', 'Main Course', 'Dessert'];
 
-// Filter tabs
 const FILTER_OPTIONS = ['All', ...COURSE_OPTIONS];
 
-// Reusable input component
 function FormInput({
   label,
   value,
@@ -49,7 +46,6 @@ function FormInput({
   );
 }
 
-// Reusable statistics card
 function StatisticCard({ title, value }) {
   return (
     <View style={styles.statCard}>
@@ -59,7 +55,6 @@ function StatisticCard({ title, value }) {
   );
 }
 
-// Reusable menu item card
 function MenuCard({ item, onEdit, onDelete }) {
   return (
     <View style={styles.menuCard}>
@@ -99,27 +94,21 @@ function MenuCard({ item, onEdit, onDelete }) {
 }
 
 export default function App() {
-  // Form state
   const [dishName, setDishName] = useState('');
   const [description, setDescription] = useState('');
   const [priceInput, setPriceInput] = useState('');
   const [selectedCourse, setSelectedCourse] = useState('');
 
-  // Menu state
   const [menuItems, setMenuItems] = useState([]);
 
-  // Search and filter state
   const [searchText, setSearchText] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
 
-  // Editing state
   const [editingId, setEditingId] = useState(null);
 
-  // Modal state
   const [courseModalVisible, setCourseModalVisible] =
     useState(false);
 
-  // Clear the form
   const resetMenuForm = () => {
     setDishName('');
     setDescription('');
@@ -128,7 +117,6 @@ export default function App() {
     setEditingId(null);
   };
 
-  // Validate form information
   const validateMenuForm = () => {
     if (
       !dishName.trim() ||
@@ -158,7 +146,6 @@ export default function App() {
     return true;
   };
 
-  // Add a new menu item or update an existing one
   const handleSaveMenuItem = () => {
     if (!validateMenuForm()) {
       return;
@@ -192,7 +179,6 @@ export default function App() {
     resetMenuForm();
   };
 
-  // Load a menu item into the form for editing
   const handleEditMenuItem = (item) => {
     setDishName(item.name);
     setDescription(item.description);
@@ -201,7 +187,6 @@ export default function App() {
     setEditingId(item.id);
   };
 
-  // Delete a menu item after confirmation
   const handleDeleteMenuItem = (id) => {
     Alert.alert(
       'Delete Menu Item',
@@ -228,7 +213,6 @@ export default function App() {
     );
   };
 
-  // Search and filter menu items
   const filteredMenuItems = menuItems.filter((item) => {
     const matchesSearch = item.name
       .toLowerCase()
@@ -241,7 +225,6 @@ export default function App() {
     return matchesSearch && matchesCourse;
   });
 
-  // Calculate menu statistics
   const totalItems = menuItems.length;
 
   const totalPrice = menuItems.reduce(
